@@ -1,0 +1,485 @@
+
+# aim ----
+    # annotate major cell types
+
+
+
+
+# define environment ----
+.libPaths(
+    c(
+        '/share/ScratchGeneral/tonwan/projects/snPATHO-Seq/renv/library/R-4.1/x86_64-conda-linux-gnu',
+        .libPaths()
+    )
+)
+library(Seurat)
+library(tidyverse)
+library(RColorBrewer)
+
+library(ComplexHeatmap)
+library(circlize)
+
+
+
+
+# arguments ----
+data_file <- '/share/ScratchGeneral/tonwan/projects/snPATHO-Seq/data/external_data/10X_data_integrated/Lung_20011329NL_integrated.rds'
+
+out_dir <- '/share/ScratchGeneral/tonwan/projects/snPATHO-Seq/results/snRNA_external_data/10X_data_Tony/integration/Lung_20011329NL'
+dir.create(out_dir, recursive = T)
+
+sample_id <- 'Lung_20011329NL'
+
+out_data_dir <- '/share/ScratchGeneral/tonwan/projects/snPATHO-Seq/data/external_data/10X_data_annotated'
+dir.create(out_dir, recursive = T)
+
+
+
+# load data ----
+obj <- readRDS(file = data_file)
+
+
+
+
+# check the expression of selected cell type markers 
+marker_dir <- paste0(out_dir, '/', 'markers')
+dir.create(marker_dir, recursive = T)
+
+markers <- c(
+    'KRT8', 'KRT18', 'EGFR', 'MKI67', 'ESR1', 'TOP2A', 'EPCAM',
+    'PDGFRA', 'PDGFRB', 'COL1A1', 'FAP', 'FAK',
+    'ACTA2', 'MYH11', 'MYL9', 'MCAM', 'RGS5', 
+    'PECAM1', 'VWF', 'FLT1', 'PROX1',
+    'PTPRC', 'CD3D', 'CD2', 'TRAC', 'TRBC1', 'CD4', 'CD8A', 'FOXP3',
+    'MS4A1', 'CD79A', 'CD19', 'IGHG1',
+    'CD27', 'IRF4', 'BCL6', 'IGHG1', 'JCHAIN',
+    'ITGAX', 'CD68', 'CD163', 'TNF', 'CD80', 'CD86', 'NOS2', 'S100A8', 'S100A9',
+    'CD14', 'CCR2', 'FCGR3A',
+    'CLEC10A', 'CLEC9A', 'XCR1',
+    'ITGAM',
+    'NCAM1', 'NKG7',
+    'SPTA1', 'HBB', 'HBA',
+    'NRXN1', 'CADM2', 'NRXN3', 'TUBB3', 'MAP2',
+    'DNAH12', 'DNAAF1', 'DNAH7',
+    'FCER1G', 'S100A9', 'S100A12', 'VCAN', 'COTL1', 'S100A8', 'CD14', 'LST1', 'FCN1', 'AIF1',
+    'IFI27', 'TM4SF1', 'CLEC14A', 'CDH5', 'PECAM1', 'HYAL2', 'SPARCL1', 'EGFL7', 'CLDN5', 'AQP1',
+    'VWF', 'MGP', 'RAMP3', 'GNG11', 'RAMP2', 'SPARCL1', 'IGFBP7', 'CLEC14A', 'ACKR1', 'PECAM1',
+    'SPARCL1', 'SOX17', 'IFI27', 'TM4SF1', 'A2M', 'CLEC14A', 'GIMAP7', 'CRIP2', 'CLDN5', 'PECAM1',
+    'NAPSA', 'SFTPD', 'PEBP4', 'SLC39A8', 'SLC34A2', 'CYB5A', 'MUC1', 'S100A14', 'SFTA2', 'SFTA3',
+    'SFTA2', 'CEACAM6', 'FXYD3', 'CAV1', 'TSPAN13', 'KRT7', 'ADIRF', 'HOPX', 'AGER', 'EMP2',
+    'KRT19', 'CEACAM6', 'WFDC2', 'TACSTD2', 'CXCL17', 'BPIFB1', 'MUC1', 'CP', 'KRT7', 'PIGR',
+    'CCL28', 'PIP', 'ZG16B', 'PIGR', 'SEC11C', 'MARCKSL1', 'SELM', 'LTF', 'TCN1', 'AZGP1',
+    'SNTN', 'FAM229B', 'TMEM231', 'C5orf49', 'C12orf75', 'GSTA1', 'C11orf97', 'RP11-356K23.1', 'CD24', 'RP11-295M3.4',
+    'HLA-DPB1', 'HLA-DPA1', 'CTSZ', 'ACP5', 'COTL1', 'FCER1G', 'C1QC', 'LAPTM5', 'CTSS', 'HLA-DQA1',
+    'MRC1', 'RNASE1', 'FGL2', 'RNASE6', 'GPR183', 'CD14', 'MS4A6A', 'AIF1',
+    'MCEMP1', 'UPP1', 'C5AR1', 'AIF1', 'LST1', 'LINC01272', 'MRC1', 'CCL18', 'CCL3',
+    'LYZ', 'ACP5', 'TYROBP', 'LGALS1', 'CD68', 'AIF1', 'CTSL', 'EMP3', 'FCER1G', 'LAPTM5',
+    'MS4A7', 'C1QA', 'ACP5', 'C1QC', 'CTSS',
+    'LYZ', 'CD163', 'TYROBP', 'LGALS1', 'CD68', 'CTSL', 'EMP3', 'AIF1', 'FCER1G', 'LAPTM5',
+    'VWA5A', 'RGS13', 'C1orf186', 'HPGDS', 'CPA3', 'GATA2', 'MS4A2', 'KIT', 'TPSAB1', 'TPSB2')
+
+
+
+DefaultAssay(obj) <- 'RNA'
+to_plot <- markers[markers %in% rownames(obj)]
+for (g in to_plot) {
+    if (file.exists(paste0(marker_dir, '/', g, '.pdf'))) {
+        next
+    }
+    pdf(paste0(marker_dir, '/', g, '.pdf'))
+        print(FeaturePlot(obj, features = g, reduction = 'umap', order = T))
+    dev.off()
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+optimal_clustering_dir <- paste0(out_dir, '/', 'optimal_cluster')
+dir.create(optimal_clustering_dir, recursive = T)
+
+
+opt_res <- 0.9
+cluster_name <- grep(paste0('res.', opt_res), colnames(obj@meta.data), value = T)[1]
+
+
+
+# make a plot with label at the optimal cluster resolution ----
+pdf(file = paste0(optimal_clustering_dir, '/', 'umap_', opt_res, '.pdf'))
+    print(
+        DimPlot(obj, reduction = "umap", group.by = cluster_name, label = T, repel = T)
+    )
+dev.off()
+
+
+
+
+
+# check markers for selected clusters
+Idents(obj) <- cluster_name
+
+for (cl in c(12)) {
+    de_markrers <- FindMarkers(obj, ident.1 = cl, test.use = 't')
+    write.csv(file = paste0(optimal_clustering_dir, '/', 'Cluster_', cl, '_markers.csv'), de_markrers)
+}
+
+
+
+
+
+
+
+
+
+
+
+
+####################################################################################
+####################################################################################
+####################################################################################
+# annotate clusters ----
+Idents(obj) <- cluster_name
+
+new_annotation_df <- data.frame(cluster_id = unique(as.character(Idents(obj))),
+                                initial_annotation = '')
+new_annotation_df[new_annotation_df$cluster_id == '0', 'initial_annotation'] <- 'Fibroblasts'
+new_annotation_df[new_annotation_df$cluster_id == '1', 'initial_annotation'] <- 'Unassigned'
+new_annotation_df[new_annotation_df$cluster_id == '2', 'initial_annotation'] <- 'T'
+new_annotation_df[new_annotation_df$cluster_id == '3', 'initial_annotation'] <- 'Endothelial'
+new_annotation_df[new_annotation_df$cluster_id == '4', 'initial_annotation'] <- 'AT2'
+new_annotation_df[new_annotation_df$cluster_id == '5', 'initial_annotation'] <- 'AT1'
+new_annotation_df[new_annotation_df$cluster_id == '6', 'initial_annotation'] <- 'AT2'
+new_annotation_df[new_annotation_df$cluster_id == '7', 'initial_annotation'] <- 'Macrophages'
+new_annotation_df[new_annotation_df$cluster_id == '8', 'initial_annotation'] <- 'Macrophages'
+new_annotation_df[new_annotation_df$cluster_id == '9', 'initial_annotation'] <- 'Ciliated_cells'
+new_annotation_df[new_annotation_df$cluster_id == '10', 'initial_annotation'] <- 'Fibroblasts'
+new_annotation_df[new_annotation_df$cluster_id == '11', 'initial_annotation'] <- 'Macrophages'
+new_annotation_df[new_annotation_df$cluster_id == '12', 'initial_annotation'] <- 'Mast_cells'
+new_annotation_df[new_annotation_df$cluster_id == '13', 'initial_annotation'] <- 'Endothelial'
+new_annotation_df[new_annotation_df$cluster_id == '14', 'initial_annotation'] <- 'Pericytes'
+new_annotation_df[new_annotation_df$cluster_id == '15', 'initial_annotation'] <- 'Endothelial'
+new_annotation_df[new_annotation_df$cluster_id == '16', 'initial_annotation'] <- 'Pericytes'
+new_annotation_df[new_annotation_df$cluster_id == '17', 'initial_annotation'] <- 'Macrophages'
+new_annotation_df[new_annotation_df$cluster_id == '18', 'initial_annotation'] <- 'NK'
+new_annotation_df[new_annotation_df$cluster_id == '19', 'initial_annotation'] <- 'Macrophages'
+new_annotation_df[new_annotation_df$cluster_id == '20', 'initial_annotation'] <- 'Unassigned'
+new_annotation_df[new_annotation_df$cluster_id == '21', 'initial_annotation'] <- 'Plasmablasts'
+new_annotation_df[new_annotation_df$cluster_id == '22', 'initial_annotation'] <- 'B'
+new_annotation_df[new_annotation_df$cluster_id == '23', 'initial_annotation'] <- 'Lymphatic_endothelial'
+new_annotation_df[new_annotation_df$cluster_id == '24', 'initial_annotation'] <- 'Fibroblasts'
+
+
+
+
+# annotate the object
+new_annotations <- new_annotation_df$initial_annotation
+names(new_annotations) <- new_annotation_df$cluster_id
+
+obj <- RenameIdents(obj, new_annotations)
+obj$initial_annotation <- Idents(obj)
+
+
+# export cell type annotations as csv file for easier modification and assessemnt
+write.csv(file = paste0(optimal_clustering_dir, '/', 'initial_annotation.csv'), obj$initial_annotation)
+
+
+# plot a umap with new annotations
+Idents(obj) <- 'initial_annotation'
+pdf(file = paste0(optimal_clustering_dir, '/', 'umap_initial_annotation.pdf'), width = 10, height = 7)
+    print(
+        DimPlot(obj, reduction = "umap", group.by = 'initial_annotation', label = T, repel = T)
+    )
+dev.off()
+
+
+
+
+
+
+
+
+####################################################################################
+####################################################################################
+####################################################################################
+# save processed object 
+saveRDS(file = paste0(out_data_dir, '/', sample_id, '_annotated.rds'), obj)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####################################################################################
+####################################################################################
+####################################################################################
+# plot for the paper
+paper_fig_dir <- paste0(out_dir, '/', 'paper_figures')
+dir.create(paper_fig_dir, recursive = T)
+
+# define colors
+# generate colors for cell types
+cell_colors <- scales::hue_pal()(length(unique(obj$initial_annotation)))
+names(cell_colors) <- unique(obj$initial_annotation)
+
+# load predefined colors for workflows
+source('/share/ScratchGeneral/tonwan/projects/snPATHO-Seq/scripts/colors.R')
+workflow_colors <- workflow_colors[names(workflow_colors) %in% unique(obj$processing_method)]
+
+
+
+
+
+
+
+
+# plot umap with annotation
+plot <- DimPlot(obj, group.by = 'initial_annotation', cols = cell_colors) +
+            labs(title = NULL)
+plot <- LabelClusters(plot = plot, id = "initial_annotation", repel = TRUE, box = TRUE, force = 1, color = 'white')
+
+pdf(file = paste0(paper_fig_dir, '/', 'umap_with_annotation.pdf'), width = 8)
+    print(
+        plot
+    )     
+dev.off()
+
+
+
+
+
+
+
+# split umap by processing methods
+pdf(file = paste0(paper_fig_dir, '/', 'umap_split_by_workflows.pdf'),
+    width = 8,
+    height = 5)
+    print(
+        DimPlot(obj, reduction = "umap", group.by = 'processing_method', 
+            split.by = 'processing_method', ncol = 3, cols = workflow_colors) +
+            labs(title = NULL)
+    )
+dev.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+# run DE between annotated cell types
+Idents(obj) <- 'initial_annotation'
+de_res <- FindAllMarkers(obj, assay = 'RNA', test.use = 't', only.pos = TRUE)
+write.csv(file = paste0(paper_fig_dir, '/', 'de_between_major_cell_types.csv'), de_res)
+
+
+
+probe_ref_file <- '/share/ScratchGeneral/tonwan/projects/snPATHO-Seq/resources/Chromium_Human_Transcriptome_Probe_Set_v1.0_GRCh38-2020-A.csv'
+probe_ref <- read.csv(file = probe_ref_file, skip = 5)
+probe_ref <- probe_ref[probe_ref$included == TRUE, ]
+gene_names <- unique(unlist(lapply(str_split(probe_ref$probe_id, '\\|'), '[[', 2)))
+
+de_res <- de_res[de_res$gene %in% gene_names, ]
+
+
+# plot expression of top DE genes between clusters - annotate canonical cell type markers
+# get top 200 DE genes from each cluster to plot
+top_markers <- de_res %>% 
+    group_by(cluster) %>%
+    filter(p_val_adj < 0.05) %>%
+    slice_max(avg_log2FC, n = 200) %>% 
+    pull(gene) %>% 
+    unique()
+
+
+
+# get mean expresion of the selected genes for each processing method 
+plot_mtx <- as.data.frame(AverageExpression(obj, assays = 'RNA', slot = 'data', features = top_markers, group.by = c('processing_method', 'initial_annotation'))[[1]])
+plot_mtx$gene_names <- rownames(plot_mtx)
+plot_mtx_long <- gather(plot_mtx, key = 'annotation', value = 'mean_expression', -gene_names)
+
+# annotate the expression dataframe
+plot_mtx_long$processing_method <- unlist(lapply(str_split(plot_mtx_long$annotation, '_'), '[[', 1))
+plot_mtx_long$cell_type <- unlist(lapply(str_split(plot_mtx_long$annotation, '\\_'), function(x) paste(x[-1], collapse = '_')))
+
+
+# scale the gene expression within each processing method
+plot_mtx_long <- plot_mtx_long %>% 
+        group_by(gene_names, processing_method) %>%
+        mutate(scale(mean_expression)) %>% 
+        as.data.frame() 
+  
+# plot_order <- plot_mtx_long %>% 
+#     arrange(as.factor(cell_type)) %>% 
+#     pull(annotation) %>% 
+#     unique()
+
+plot_order <- plot_mtx_long %>% 
+    arrange(factor(cell_type, 
+        levels = c(
+            'B', 'T', 'Plasmablasts', 'NK', 'Macrophages', 'Mast_cells', 'AT1', 'AT2',
+            'Ciliated_cells', 'Endothelial', 'Lymphatic_endothelial', 'Fibroblasts',
+            'Pericytes', 'Unassigned'))) %>% 
+    pull(annotation) %>% 
+    unique()
+
+
+scaled_mtx <- spread(plot_mtx_long[, c('gene_names', 'annotation', 'scale(mean_expression)')],
+        value = 'scale(mean_expression)', key = 'annotation')
+scaled_mtx <- column_to_rownames(scaled_mtx, var = 'gene_names')
+# cap the scaled expression at -5 to 5
+scaled_mtx[scaled_mtx > 5] <- 5
+scaled_mtx[scaled_mtx < -5] <- -5
+scaled_mtx[is.na(scaled_mtx)] <- 0
+scaled_mtx <- scaled_mtx[, plot_order]
+
+# make heatmap annotation
+annot_df <- plot_mtx_long[, c('annotation', 'processing_method', 'cell_type')]
+annot_df <- distinct(annot_df)
+annot_df <- annot_df[match(colnames(scaled_mtx), annot_df$annotation), ]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# set colors
+col_fun <- colorRamp2(c(-5, 0, 5), 
+                      c("#2166AC", "white", "#B2182B"))
+
+
+# make annotation
+left_annot <- HeatmapAnnotation(
+        Workflows = annot_df$processing_method,
+        which = 'row',
+        col = list(Workflows = workflow_colors), 
+        annotation_name_gp = grid::gpar(fontsize = 12),
+        annotation_legend_param = list(
+            Workflows = list(title_gp = gpar(fontsize = 12, fontface = "bold"), 
+                                    labels_gp = gpar(fontsize = 12))))
+
+
+# left_annot <- HeatmapAnnotation(
+#         Workflows = annot_df$processing_method,
+#         Cell_types = annot_df$cell_type,
+#         which = 'row',
+#         col = list(Workflows = workflow_colors,
+#                 Cell_types = cell_colors), 
+#         annotation_name_gp = grid::gpar(fontsize = 12),
+#         annotation_legend_param = list(
+#             Workflows = list(title_gp = gpar(fontsize = 12, fontface = "bold"), 
+#                                     labels_gp = gpar(fontsize = 12)),
+#             Cell_types = list(title_gp = gpar(fontsize = 12, fontface = "bold"), 
+#                                     labels_gp = gpar(fontsize = 12))))
+
+
+
+
+
+
+
+
+
+
+
+
+# annotate selected genes 
+genes_to_plot <- de_res %>% 
+    group_by(cluster) %>%
+    filter(p_val_adj < 0.05) %>%
+    slice_max(avg_log2FC, n = 5) %>% 
+    pull(gene)
+
+# make sure the selected markers are in the matrix
+all_markers <- genes_to_plot[genes_to_plot %in% rownames(scaled_mtx)]
+
+# get location of the genes to be annotated
+mtx_index <- seq(1:nrow(scaled_mtx))
+names(mtx_index) <- rownames(scaled_mtx)
+position_in_matrix <- mtx_index[names(mtx_index) %in% all_markers]
+
+bottom_annotation <- HeatmapAnnotation(
+    markers = anno_mark(
+        at = position_in_matrix, 
+        labels = names(position_in_matrix),
+        which = "column", side = "bottom",
+        labels_gp = gpar(fontsize = 8)))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# plot heatmap ----
+plot <- Heatmap(t(scaled_mtx),
+                name = 'Scaled mean expression',
+                heatmap_legend_param = list(title_gp = gpar(fontsize = 12, fontface = "bold")),
+                col = col_fun,
+                left_annotation = left_annot,
+                bottom_annotation = bottom_annotation,
+                show_column_names= FALSE,
+                show_row_names = TRUE,
+                cluster_rows = FALSE,
+                cluster_columns = TRUE,
+                split = annot_df$processing_method,
+                column_names_gp = gpar(fontsize = 6),
+                row_names_gp = gpar(fontsize = 8))
+
+
+pdf(file = paste0(paper_fig_dir, '/', 'top_DE_gene_heatmap', '.pdf'),
+    width = 14, height = 7)
+    draw(plot)
+dev.off()
+
+
